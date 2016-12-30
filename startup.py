@@ -2,6 +2,9 @@ import config
 import send_email
 import netifaces
 
+"""
+Get IP and send it to my e-mail, so that I can SSH in to the car
+"""
 msg = ''
 interfaces = netifaces.interfaces()
 for i in interfaces:
