@@ -27,6 +27,6 @@ for i in interfaces:
     if iface != None:
         for j in iface:
             msg += ', {0}'.format(j['addr'])
-            
+
 send_email.send_email(to_user=config.master_email, SUBJECT='IP on startup',
                       TEXT='IP: {0}'.format(msg))

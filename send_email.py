@@ -29,8 +29,6 @@ class EmailHandler(object):
             self.to = [to]  # must be a list
         else:
             self.to = to
-        self.go_back_to_top = '<center><br><a href="#top">Go Back to top</a></center><br><br>'
-        self.add_chart_disclaimer = '<br> <small>(Click the chart to view details and an interactive version)</small><br>'
         self._set_up_email_fields()
 
     def _set_up_email_fields(self):
@@ -52,61 +50,6 @@ class EmailHandler(object):
         self.subject = subjectline
         self.msgRoot['Subject'] = self.subject
 
-    def add_header(self, name, description):
-        """
-        Adds a line item to create an index
-        :param name:
-        :param description:
-        :return:
-        """
-        full_txt = "<li><a href='#%s'>%s</a></li>" % (name, description)
-        if self.use_header_text:
-            self.header_text += full_txt
-        else:
-            self.email_text += full_txt
-
-    def add_dropbox_attachment(self, read_loc, dropbox_loc, overwrite=False, remove=False):
-        """
-        Adds a link to a dropbox attachment. Links not always working, but path is correct. Have to look
-        more into it.
-        Path:
-        http://www.dropbox.com/home/Avant-Finance/Automation/Cash%20Reconciliations/US/ACH/ACH%20Reconciliation%202016-02-23%20(1).xlsx
-        Needs to be turned into:
-        https://www.dropbox.com/home/Avant-Finance/Automation/Cash%20Reconciliations/US/ACH?preview=ACH+Reconciliation+2015-01-02+(1).xlsx#
-        :param read_loc: where to read your dataframe
-        :param dropbox_loc: where to put the file
-        :param overwrite: overwrite files with name
-        :param remove: remove old file
-        :return:
-        """
-        response = config.put_dropbox(read_loc, dropbox_loc, overwrite=overwrite, remove=remove)
-        # Have to edit the path response to match the correct path convention:
-        path = response['path']
-        path_split = path.split('/')
-        end_path = path_split[-1].replace('%20', '+')
-        end_path = '?preview=%s' % end_path
-        begin_path = '/'.join(str(e) for e in path_split[:-1])
-        path = '%s%s' % (begin_path, end_path)
-        self.email_text += '<br><a href="http://www.dropbox.com/home%s"> Download %s on Dropbox </a><br>' % (
-            path, dropbox_loc.split('/')[-1])
-
-    def add_df_to_google_sheets(self, df, wkb_name, wks_name, include_index=True, include_cols=True,
-                                include_link_in_email=True):
-        """
-        Add your DataFrame to Google Sheets, and optionally add that link to the email
-        :param df: dataFrame to write
-        :param wkb_name: the workbook name (must share with email in secret.py first)
-        :param wks_name: worksheet name in workbook
-        :param include_index: bool, write index in the sheet
-        :param include_cols: bool, write column names in the sheet
-        :return:
-        """
-        link = config.df_to_google_doc(df, workbook_name=wkb_name, wks_name=wks_name, include_index=include_index,
-                                       include_col_names=include_cols,
-                                       return_link=include_link_in_email)
-        if include_link_in_email:
-            self.email_text += '<br><a href="{}"> Data is saved on Google Docs. Click to view </a><br>'.format(link)
-
     def add_attachment(self, csv_loc, add_to_message=False):
 
         """
@@ -123,34 +66,6 @@ class EmailHandler(object):
         if add_to_message:
             # Not working
             self.email_text += '<br><img src="cid:%s"><br>' % csv_loc.split('/')[-1]
-
-    def add_closing_text_hr(self):
-        """
-        If you have "sections," this will add
-        a Horizontal Rule and some breaklines
-        :return:
-        """
-        self.email_text += '<br><hr><br><br><br>'
-
-    def add_section_header(self, a_name=None, title=None, chart=True):
-        """
-        Add a section header to the document
-        a_name is for building an index at the top
-        that points to this header
-        :param a_name: building an index at the top
-                        that points to this header
-        :param title: Header to be displayed
-        :param chart: Bool. We have a chart disclaimer saying to click on them
-                    if you have plots, you can make this True
-        :return:
-        """
-        if self.use_header_text:
-            self.add_header(a_name, title)
-        if chart:
-            self.email_text += '<center><a name="%s"></a><h2>%s</h2>%s %s</center>' % (
-                a_name, title, self.add_chart_disclaimer, self.go_back_to_top)
-        else:
-            self.email_text += '<center><a name="%s"></a><h2>%s</h2>%s</center>' % (a_name, title, self.go_back_to_top)
 
     def add_plot_text(self, url_split, scale=1, breaks=True, return_text=False):
         """
@@ -176,24 +91,6 @@ class EmailHandler(object):
         if breaks:
             self.email_text += '<br><br>'
 
-    def add_two_plots(self, url_splits=[], scale=.5):
-        """
-        Mimics add_plot_text, except it does more than one plot
-        Can do 2+
-        TODO: Need to collapse these two methods into one
-        and need to rename to add_x_plots
-        :param url_splits:
-        :param scale:
-        :return:
-        """
-        self.email_text += '<center>'
-        text = ''
-        for url_split in url_splits:
-            text += '<a href=%s><img src="%s"></a>' % (
-                url_split[0] + '.embed?' + url_split[1], url_split[0] + '.png?' + url_split[1] + '&scale=%s' % scale)
-        self.email_text += text
-        self.email_text += '</center><br><br>'
-
     def add_random_text(self, text, center=False):
         """
         Literally just add any text you want into the email
@@ -204,26 +101,6 @@ class EmailHandler(object):
         if center:
             text = "<center>" + text + "</center>"
         self.email_text += text
-
-    def html_table_formatting(self, html):
-        """
-        This takes a pandas DataFrame output (df.to_html()) and styles it
-        Usage: self.email_handler = send_email.EmailHandler()
-        self.email_handler.html_table_formatting(df.to_html())
-        :param html:
-        :return:
-        """
-        html = html.replace('<table border="1" class="dataframe">',
-                            '<center><table border="1" style="border-collapse: collapse;padding: 3px 7px 2px 7px;">')
-        html = html.replace('<tr style="text-align: left;">',
-                            '<tr style="text-align: center; background-color:#25333f; color: #ffffff;">')
-        html = html.replace('<tr style="text-align: right;">',
-                            '<tr style="text-align: center; background-color:#25333f; color: #ffffff;">')
-        html = html.replace('<th>', '<th style="text-align: left;">')
-        html = html.replace('Total', '<b>Total &nbsp;&nbsp;</b>')
-        html = html.replace('&lt;=48 Month Term', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;=48 Month Term')
-        html = html.replace('&gt;48 Month Term', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&gt;48 Month Term')
-        return html
 
     def add_image(self, image_loc):
         ### Not working
