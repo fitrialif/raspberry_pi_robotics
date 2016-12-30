@@ -15,6 +15,9 @@ def connected_to_internet(url='http://www.google.com/', timeout=5):
         print("No internet connection available.")
     return False
 
+while not connected_to_internet():
+    continue
+
 msg = ''
 interfaces = netifaces.interfaces()
 for i in interfaces:
@@ -24,7 +27,6 @@ for i in interfaces:
     if iface != None:
         for j in iface:
             msg += ', {0}'.format(j['addr'])
-while not connected_to_internet():
-    continue
+            
 send_email.send_email(to_user=config.master_email, SUBJECT='IP on startup',
                       TEXT='IP: {0}'.format(msg))
